@@ -69,6 +69,7 @@ module DataShift
         raise ProductLoadError.new("Cannot process #{value} NO details found to assign to") unless(method_detail)
           
         # TODO - start supporting assigning extra data via current_attribute_hash
+        # FIXME - when variant_price,failed to assign [] via operator variant_price
         current_value, current_attribute_hash = @populator.prepare_data(method_detail, value)
          
         current_method_detail = method_detail
@@ -77,16 +78,11 @@ module DataShift
         
         # Special cases for Products, generally where a simple one stage lookup won't suffice
         # otherwise simply use default processing from base class
-        logger.debug '================'
-        logger.debug @load_object.to_json
-        logger.debug "haha_variants: #{@load_object.variants.to_json}"
-        logger.debug "current_value: #{current_value}"
-        logger.debug "current_method_detail: #{current_method_detail.operator?('variants')}"
-        if(current_value && (current_method_detail.operator?('variants') || current_method_detail.operator?('option_types')) )
+        if(current_value.present? && (current_method_detail.operator?('variants') || current_method_detail.operator?('option_types')) )
 
           add_options_variants
 
-        elsif(current_method_detail.operator?('taxons') && current_value)
+        elsif(current_method_detail.operator?('taxons') && current_value.present?)
 
           add_taxons
 
@@ -95,16 +91,16 @@ module DataShift
           add_properties
 
         # This loads images to Product or Product Master Variant depending on Spree version
-        elsif(current_method_detail.operator?('images') && current_value)
+        elsif(current_method_detail.operator?('images') && current_value.present?)
 
           add_images( load_object.master )
         
         # This loads images to Product Variants
-        elsif(current_method_detail.operator?('variant_images') && current_value)
+        elsif(current_method_detail.operator?('variant_images') && current_value.present?)
 
           add_variant_images(current_value)
 
-        elsif(current_method_detail.operator?('variant_price') && current_value)
+        elsif(current_value.present? && current_method_detail.operator?('variant_price'))
 
           if(@load_object.variants.size > 0)
 
@@ -114,8 +110,13 @@ module DataShift
               values = current_value.to_s.split(Delimiters::multi_assoc_delim)
 
               if(@load_object.variants.size == values.size)
-                @load_object.variants.each_with_index {|v, i| v.price = values[i].to_f }
-                @load_object.save
+                # @load_object.variants.each_with_index {|v, i| v.price = values[i].to_f }
+                # @load_object.save
+
+                # Save is invalid;
+                @load_object.variants.each_with_index do |v, i|
+                  v.update(price: values[i].to_f) if values[i].to_f != 0.0
+                end
               else
                 puts "WARNING: Price entries did not match number of Variants - None Set"
               end
@@ -126,7 +127,7 @@ module DataShift
             puts "Variant Price, What if mix of product and variants"
           end
 
-        elsif(current_method_detail.operator?('variant_cost_price') && current_value)
+        elsif(current_method_detail.operator?('variant_cost_price') && current_value.present?)
 
           if(@load_object.variants.size > 0)
 
@@ -136,8 +137,13 @@ module DataShift
               values = current_value.to_s.split(Delimiters::multi_assoc_delim)
 
               if(@load_object.variants.size == values.size)
-                @load_object.variants.each_with_index {|v, i| v.cost_price = values[i].to_f }
-                @load_object.save
+                # @load_object.variants.each_with_index {|v, i| v.cost_price = values[i].to_f }
+                # @load_object.save
+
+                # Save is invalid;
+                @load_object.variants.each_with_index do |v, i|
+                  v.update(cost_price: values[i].to_f) if values[i].to_f != 0.0
+                end
               else
                 puts "WARNING: Cost Price entries did not match number of Variants - None Set"
               end
@@ -148,7 +154,7 @@ module DataShift
             puts "Variant Cost Price, What if mix of product and variants"
           end          
           
-        elsif(current_method_detail.operator?('variant_sku') && current_value)
+        elsif(current_method_detail.operator?('variant_sku') && current_value.present?)
 
           if(@load_object.variants.size > 0)
 
@@ -158,8 +164,13 @@ module DataShift
               values = current_value.to_s.split(Delimiters::multi_assoc_delim)
 
               if(@load_object.variants.size == values.size)
-                @load_object.variants.each_with_index {|v, i| v.sku = values[i].to_s }
-                @load_object.save
+                # @load_object.variants.each_with_index {|v, i| v.sku = values[i].to_s }
+                # @load_object.save
+
+                # Save is invalid;
+                @load_object.variants.each_with_index do |v, i|
+                  v.update(sku: values[i].to_s)
+                end
               else
                 puts "WARNING: SKU entries did not match number of Variants - None Set"
               end
@@ -171,8 +182,7 @@ module DataShift
           end
           
         #elsif(current_value && (current_method_detail.operator?('count_on_hand') || current_method_detail.operator?('on_hand')) )
-        elsif(current_value && current_method_detail.operator?('stock_items'))
-          
+        elsif(current_value.present? && current_method_detail.operator?('stock_items'))
           logger.info "Adding Variants Stock Items (count_on_hand)"
 
           save_if_new
