@@ -77,6 +77,11 @@ module DataShift
         
         # Special cases for Products, generally where a simple one stage lookup won't suffice
         # otherwise simply use default processing from base class
+        logger.debug '================'
+        logger.debug @load_object.to_json
+        logger.debug "haha_variants: #{@load_object.variants.to_json}"
+        logger.debug "current_value: #{current_value}"
+        logger.debug "current_method_detail: #{current_method_detail.operator?('variants')}"
         if(current_value && (current_method_detail.operator?('variants') || current_method_detail.operator?('option_types')) )
 
           add_options_variants
@@ -299,9 +304,11 @@ module DataShift
               
               i = @load_object.variants.size + 1
 
-              variant = @load_object.variants.create( :sku => "#{load_object.sku}_#{i}", :price => load_object.price, :weight => load_object.weight, :height => load_object.height, :width => load_object.width, :depth => load_object.depth, :tax_category_id => load_object.tax_category_id)
+              # spree higher version add presence validation for option_values in variant
 
-              variant.option_values << ov_list if(variant)    
+              variant = @load_object.variants.new( :sku => "#{load_object.sku}_#{i}", :price => load_object.price, :weight => load_object.weight, :height => load_object.height, :width => load_object.width, :depth => load_object.depth, :tax_category_id => load_object.tax_category_id)
+              variant.option_values << ov_list if(variant)
+              variant.save
             end
           end
 
