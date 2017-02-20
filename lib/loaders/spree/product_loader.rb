@@ -43,8 +43,8 @@ module DataShift
         # In >= 1.1.0 Image moved to master Variant from Product so no association called Images on Product anymore
         
         # Non Product/database fields we can still process
-        @we_can_process_these_anyway =  ["images","variant_sku","variant_cost_price","variant_price","variant_images","stock_items"]
-          
+        @we_can_process_these_anyway =  ["images","variant_sku","variant_cost_price","variant_price","variant_images","stock_items","how_it_works","ingredients","type","testimonials","vitamins","why_you_need_it"]
+
         # In >= 1.3.0 price moved to master Variant from Product so no association called Price on Product anymore
         # taking care of it here, means users can still simply just include a price column
         @we_can_process_these_anyway << 'price' if(DataShift::SpreeEcom::version.to_f >= 1.3 )
@@ -188,6 +188,17 @@ module DataShift
           save_if_new
           
           add_variants_stock(current_value)
+
+        elsif (current_value.present? &&
+          (current_method_detail.operator?('how_it_works')||
+            current_method_detail.operator?('ingredients') ||
+            current_method_detail.operator?('type') ||
+            current_method_detail.operator?('testimonials') ||
+            current_method_detail.operator?('vitamins') ||
+            current_method_detail.operator?('why_you_need_it')
+          )
+        )
+          add_properties_from_maganto(current_method_detail.operator, current_value)
 
         else
           super
@@ -367,6 +378,31 @@ module DataShift
 
         end
 
+      end
+
+      # like add_properties, but the value will include such as 'style="margin-top: 101px;"', this function is only for my application
+      def add_properties_from_maganto(find_by_name, find_by_value)
+        save_if_new
+
+        raise "Cannot find Property via #{find_by_name} (with value #{find_by_value})" unless(find_by_name)
+
+        property = @@property_klass.where(:name => find_by_name).first
+
+        unless property
+          property = @@property_klass.create( :name => find_by_name, :presentation => find_by_name.humanize)
+          logger.info "Created New Property #{property.inspect}"
+        end
+
+        if(property)
+          # Property now protected from mass assignment
+          x = @@product_property_klass.new( :value => find_by_value )
+          x.property = property
+          x.save
+          @load_object.product_properties << x
+          logger.info "Created New ProductProperty #{x.inspect}"
+        else
+          puts "WARNING: Property #{find_by_name} NOT found - Not set Product"
+        end
       end
 
       # Nested tree structure support ..
