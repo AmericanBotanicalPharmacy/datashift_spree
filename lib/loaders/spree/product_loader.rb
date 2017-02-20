@@ -69,7 +69,7 @@ module DataShift
         raise ProductLoadError.new("Cannot process #{value} NO details found to assign to") unless(method_detail)
           
         # TODO - start supporting assigning extra data via current_attribute_hash
-        # FIXME - when variant_price,failed to assign [] via operator variant_price
+        value = Time.now.to_s(:db) if method_detail.operator?('available_on') && value.blank?
         current_value, current_attribute_hash = @populator.prepare_data(method_detail, value)
          
         current_method_detail = method_detail
