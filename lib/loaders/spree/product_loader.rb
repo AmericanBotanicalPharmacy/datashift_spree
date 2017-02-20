@@ -327,7 +327,9 @@ module DataShift
 
               # spree higher version add presence validation for option_values in variant
 
-              variant = @load_object.variants.new( :sku => "#{load_object.sku}_#{i}", :price => load_object.price, :weight => load_object.weight, :height => load_object.height, :width => load_object.width, :depth => load_object.depth, :tax_category_id => load_object.tax_category_id)
+              variant = @load_object.variants.new( :sku => "#{load_object.sku}_#{i}", :price => load_object.price, :weight => load_object.weight,
+                                                   :height => load_object.height, :width => load_object.width, :depth => load_object.depth,
+                                                   :tax_category_id => load_object.tax_category_id, :track_inventory => false)
               variant.option_values << ov_list if(variant)
               variant.save
             end
